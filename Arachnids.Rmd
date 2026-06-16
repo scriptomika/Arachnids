@@ -1,0 +1,706 @@
+---
+title: "Arachnid Dollo"
+author: "Sabrina Pankey"
+date: "2025-09-08"
+output: html_document
+engine: knitr
+knitr:
+  opts_chunk: 
+    R.options:
+      width: 120
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F,fig.height = 12,include=F)
+
+library(this.path)
+setwd(this.dir())
+
+library(viridis)
+#colors
+present.col<-"black" #OG exists (due to inheritance or to gain)
+absent.col<-"lightgray"
+
+col.a="gray" #a=absent & not present in ancestor
+col.p="#218380" #p=inherited from ancestor (previous node)
+col.g="#fbb13c" #g=gain compared to previous node
+col.l="#d81159" #l=lost from previous node
+
+require(phytools)
+library(phangorn)
+library(dplyr)
+library(tidyr)
+library(ggplot2);library(ggtree)
+```
+```{r preptrees,include=F,eval=F}
+fixnames<-function(TREE){
+  TREE$tip.label[TREE$tip.label=="Hypochithonius.genome"]<-"Hypochithonius_genome"
+TREE$tip.label[TREE$tip.label=="Limulus.genome"]<-"Limulus_genome"
+return(TREE)
+}
+tr0<-read.tree("Constraint_Arachnida.treefile.tre") %>% ladderize() %>% fixnames(.)
+tr1<-read.tree("Constraint_Acaromorpha.treefile.tre")  %>% ladderize() %>% fixnames(.)
+tr2<-read.tree("Constraint_Cephalosomata.treefile.tre")  %>% ladderize() %>% fixnames(.)
+tr3<-read.tree("Constraint_Poecilophysidea.treefile.tre")  %>% ladderize() %>% fixnames(.)
+tr4<-read.tree("Constraint_Pseudos_plus_Acariformes.treefile.tre")  %>% ladderize() %>% fixnames(.)
+tr5<-read.tree("Constraint_Xiph_plus_Arachnopul.treefile.tree")  %>% ladderize() %>% fixnames(.)
+tr6<-read.tree("Constraint_Xiph_Ricinulei_Arachnopul.treefile.tre")  %>% ladderize() %>% fixnames(.)
+tr7<-read.tree("Constraint_Acarif_Rici.treefile") %>% ladderize() %>% fixnames(.)
+tr8<-read.tree("Unconstrained.treefile") %>% ladderize() %>% fixnames(.)
+tr9<-read.tree("Constraint_Acarif_Opis.tre") %>% ladderize() %>% fixnames(.)
+tr10<-read.tree("Constraint_Acari_take2.tree") %>% ladderize() %>% fixnames(.)
+
+plot(tr10,cex=0.8); nodelabels(cex=0.8)
+tr0<-tr0 %>% phytools::reroot(.,147,position=0.01) 
+tr1<-tr1 %>% phytools::reroot(.,149,position=0.01) 
+tr2<-tr2 %>% phytools::reroot(.,138,position=0.01)
+tr3<-tr3 %>% phytools::reroot(.,138,position=0.01)
+tr4<-tr4 %>% phytools::reroot(.,140,position=0.01)
+#tr5 is rooted correctly
+tr5$tip.label %in% rownames(ogdf)
+tr6<-tr6 %>% phytools::reroot(.,135,position=0.01)
+plot(tr6,cex=0.6); nodelabels()
+tr7<-tr7 %>% phytools::reroot(.,138,position=0.01)
+tr8<-tr8 %>% phytools::reroot(.,136,position=0.01)
+tr8$tip.label %in% rownames(ogdf)
+tr9<-tr9 %>% phytools::reroot(.,142,position=0.01)
+tr10<-tr10 %>% phytools::reroot(.,146,position=0.01)
+
+#did labels for tr3
+labs<-read.csv("arachnidnodes.csv") %>% arrange(Node)
+names(labs)
+pdf("treeslabelled.pdf",height=11,width=8, useDingbats = F)
+plot(tr0,main="Constraint_Arachnida",cex=0.6,x.lim = c(-.1, 1.5)); nodelabels(labs$Constraint_Arachnida,cex=0.6,frame="none",col="blue",adj=1)
+plot(tr1,main="Constraint_Acaromorpha.treefile.tre",cex=0.6,x.lim = c(-.1, 1.5)); nodelabels(labs$Constraint_Acaromorpha,cex=0.6,frame="none",col="blue",adj=1)
+plot(tr2,main="Constraint_Cephalosomata.treefile.tre",cex=0.6,x.lim = c(-.1, 1.5)); nodelabels(labs$Constraint_Cephalosomata,cex=0.6,frame="none",col="blue",adj=1)
+plot(tr3,main=" Constraint_Poecilophysidea labelled",cex=0.6,x.lim = c(-.1, 1.5)); nodelabels(labs$Constraint_Poecilophysidea,cex=0.6,frame="none",col="blue",adj=1)
+plot(tr4,main="Constraint_Pseudos_plus_Acariformes.treefile.tre",cex=0.6,x.lim = c(-.1, 1.5)); nodelabels(labs$Constraint_Pseudos_plus_Acariformes,cex=0.6,frame="none",col="blue",adj=1)
+plot(tr5,main="Constraint_Xiph_plus_Arachnopul.treefile.tree",cex=0.6,x.lim = c(-.1, 1.5)); nodelabels(labs$Constraint_Xiph_plus_Arachnopul,cex=0.6,frame="none",col="blue",adj=1)
+plot(tr6,main="Constraint_Xiph_Ricinulei_Arachnopul.treefile.tre",cex=0.6,x.lim = c(-.1, 1.5)); nodelabels(labs$Constraint_Xiph_Ricinulei_Arachnopul,cex=0.6,frame="none",col="blue",adj=1)
+plot(tr7,main="Constraint_Acarif_Rici.treefile",cex=0.6,x.lim = c(-.1, 1.5)); nodelabels(labs$Constraint_Acarif_Rici,cex=0.6,frame="none",col="blue",adj=1)
+plot(tr8,main="Unconstrained.treefile",cex=0.6,x.lim = c(-.1, 1.5)); nodelabels(labs$Unconstrained,cex=0.6,frame="none",col="blue",adj=1)
+plot(tr9,main="Constraint_Acarif_Opis.tre",cex=0.6,x.lim = c(-.1, 1.5)); nodelabels(labs$Constraint_AcariOpiliones,cex=0.6,frame="none",col="blue",adj=1)
+plot(tr10,main="Constraint_Acari_take2.tree",cex=0.6,x.lim = c(-.1, 1.5)); nodelabels(labs$Constraint_AcariParasitif,cex=0.6,frame="none",col="blue",adj=1)
+
+dev.off()
+
+#compare to older trees to set up nodelabels
+load("../july_run/Chelicerate_og4dollo.Rdata")
+phyloch::compare.phylo(tr1,tr3)
+comparePhylo(tr1,tr4,plot=T)
+
+```
+
+
+```{r setupdata,include=F}
+if(!file.exists("Chelicerate_og4dollo.Rdata")){
+#1. prep data
+
+labs<-read.csv("arachnidnodes.csv") %>% arrange(Node)
+nodenames0<-labs$Constraint_Arachnida
+nodenames1<-labs$Constraint_Acaromorpha
+nodenames2<-labs$Constraint_Cephalosomata
+nodenames3<-labs$Constraint_Poecilophysidea
+nodenames4<-labs$Constraint_Pseudos_plus_Acariformes
+nodenames5<-labs$Constraint_Xiph_plus_Arachnopul
+nodenames6<-labs$Constraint_Xiph_Ricinulei_Arachnopul
+nodenames7<-labs$Constraint_Acarif_Rici
+nodenames8<-labs$Unconstrained
+nodenames9<-labs$Constraint_AcariOpiliones
+nodenames10<-labs$Constraint_AcariParasitif
+
+treelist<-setNames(colnames(labs[-1]),nm=c("tr03","tr01","tr02","tr04","tr05","tr06","tr0","tr07","tr08","tr09","tr10"))
+plot(tr1)
+nodelabels(nodenames1)
+
+plot(tr2)
+nodelabels(nodenames2)
+
+
+ogdf<-t(read.table("../july_run/Orthogroups.GeneCount.tsv",header=T, row.names=1))
+#rownames(ogdf)<-unlist(lapply(rownames(ogdf),FUN=function(x) strsplit(x,"_")[[1]][1]))
+rownames(ogdf)[rownames(ogdf)=="Limulus.genome"]<-"Limulus_genome"
+rownames(ogdf)[rownames(ogdf)=="Hypochithonius.genome"]<-"Hypochithonius_genome"
+
+#rownames(ogdf)<-Hmisc::upFirst(rownames(ogdf))
+rownames(ogdf)[!(rownames(ogdf) %in% tr1$tip.label)]
+ogdf<-ogdf[(rownames(ogdf) %in% tr1$tip.label),]
+tr1$tip.label[!(tr1$tip.label %in% rownames(ogdf) )]
+
+tr8$tip.label[!(tr8$tip.label %in% rownames(ogdf) )]
+
+save(tr1,tr2, tr3,tr4,tr5,tr6,tr0,tr7,tr8,tr9,tr10,ogdf,nodenames1,nodenames2,nodenames3,nodenames4,nodenames5,nodenames6,nodenames0,nodenames7,nodenames8,nodenames9,nodenames10,treelist,file="Chelicerate_og4dollo.Rdata")
+#2 run Dollo on server
+}else{ load("Chelicerate_og4dollo.Rdata")}
+
+#set aside OG which only exist in one species
+ogdf_single<-ogdf %>% data.frame() %>% dplyr::select(where(~ sum(.>0)==1))
+ogdf2<-ogdf %>% data.frame() %>% dplyr::select(where(~ sum(.>0)>=2))
+
+##Unassigned Genes from Orthofinder
+##Represent OG only found in single tip (==gained at tip)
+
+#process tsv file:
+#cat Orthogroups_UnassignedGenes.tsv | perl -p -e 's/\t+/,/g' | tail -n+2  > Orthogroups_UnassignedGenes.csv
+undat<-read.csv("../july_run/Orthogroups_UnassignedGenes.csv",header=F)
+undat$V2<-unlist(lapply(undat$V2,function(x) paste(strsplit(x,"_")[[1]][1])))
+undat$V2<-unlist(lapply(undat$V2,function(x) paste(strsplit(x,"\\|")[[1]][1])))
+#hold off on parsing tips, sequences IDs too ambiguous to link to orthofinder table
+#tipOGgains<-table(undat$V2)
+#tipgainlist<-as.list(unstack(undat,undat[[1]]~undat[[2]]))
+
+```
+
+
+```{r dollo_plots_function}
+# plot_Dollo_results()
+# TREE<-tr0
+# DOLLO.RESULTS<-"dolloASR_results_H0.Rds"
+# LOSS.GAIN.PRES.ABS<-"loss_gain_pres_abs_H0.Rds"
+# HYPOTHESISNAME<-treelist["tr0"]
+# NODENAMES<-nodenames0
+plot_Dollo_results<-function(TREE,DOLLO.RESULTS,LOSS.GAIN.PRES.ABS,HYPOTHESISNAME,NODENAMES){
+#3 visualize results for H1
+load(DOLLO.RESULTS)
+tree<-TREE
+nodenames<-NODENAMES
+pres.og<-rowSums(dollo.anc.states)
+abs.og<-(ncol(dollo.anc.states)-pres.og)
+dollo.mat<-cbind(abs.og,pres.og)
+
+#infer gains and losses from presence/absence
+load(LOSS.GAIN.PRES.ABS)
+gainloss.dollo.mat<-t(apply(lossgain.table,MARGIN=1, function(x) table(factor(x, levels=c("a","g","l","p"))))) %>% data.frame()
+rownames(gainloss.dollo.mat)<-c(tree$tip.label,nodenames)
+# a=absent & not present in ancestor
+# p=inherited from ancestor (previous node)
+# g=gain compared to previous node
+# l=lost from previous node
+
+# gainloss.dollo.mat is ordered tips, then nodes
+# each rows reflect outcomes (ie what happened btween ancestor and tip is shown on tip's row), 
+# so no gains or losses can be inferred at root
+gainloss.dollo.mat.nodes<-gainloss.dollo.mat[nodenames,]
+#root is in table, but no gain/loss shown as would require comparison with earlier node
+
+dm<-dollo.mat %>% as.data.frame %>% tibble::rownames_to_column()
+
+gl<-gainloss.dollo.mat.nodes %>% as.data.frame %>% tibble::rownames_to_column()
+combined<-left_join(dm,gl) %>% dplyr::select(pres.og,abs.og,g,l,a,p)
+rownames(combined)<-rownames(dollo.mat)
+gainloss.dollo.mat.nodes<-combined
+
+ p<-ggtree(tree,right=T,branch.length="none") +geom_tiplab(aes(fontface=3),size=1.5)+ geom_label2(label=nodenames, aes(subset= !isTip),hjust=1.2,size = 1.5) + hexpand(0.2) +hexpand(-1)
+  pies <- nodepie(gainloss.dollo.mat.nodes %>%  mutate(node=Ntip(tree)+1:Nnode(tree)),cols=1:2)
+  pies3 <- lapply(pies, function(g) g+scale_fill_manual(values = c(absent.col, present.col)))
+
+  p_abspres<-p + ggpp::geom_plot(data=td_filter(!isTip), mapping=aes(x=x,y=y, label=pies3), vp.width=0.035, vp.height=0.035, hjust=0.5, vjust=0.5) 
+ #setup dummy plot to borrow legend for pie chart colors
+  e1 <- ggplot(gainloss.dollo.mat.nodes %>%  dplyr::select(pres.og,abs.og) %>%
+    tibble::rownames_to_column()%>% pivot_longer(-rowname), aes(x=rowname, value, fill=name)) +
+    geom_bar(stat="identity", width=1) + theme(legend.background = element_rect(color = NA, fill = NA))+ 
+    scale_fill_manual(name="",values=c(absent.col,present.col),labels=c("absent","present"))
+ #leg<-cowplot::get_legend(e1) #works but gives annoying warning
+ leg1<-cowplot::get_plot_component(e1, "guide-box", return_all = TRUE)
+ p_abspres<- p_abspres + annotation_custom(grob = leg1[[1]][[1]], xmin =  0, xmax = 0.5, ymin = 1, ymax = 5) 
+ 
+ p<-ggtree(tree,right=T,branch.length="none") +geom_tiplab(aes(fontface=3),size=1.5)+ geom_label2(label=nodenames, aes(subset= !isTip),hjust=1.2,size = 1.5) + hexpand(0.2) +hexpand(-1)
+  pies <- nodepie(gainloss.dollo.mat.nodes %>%  mutate(node=Ntip(tree)+1:Nnode(tree)),cols=3:6)
+  pies4 <- lapply(pies, function(g) g+scale_fill_manual(values = c(col.a,col.g,col.l,col.p)))
+  p_gainloss<-p + ggpp::geom_plot(data=td_filter(!isTip), mapping=aes(x=x,y=y, label=pies4), vp.width=0.035, vp.height=0.035, hjust=0.5, vjust=0.5) 
+ #setup dummy plot to borrow legend for pie chart colors
+  e1 <- ggplot(gainloss.dollo.mat.nodes %>%  dplyr::select(a,g,l,p) %>%
+    tibble::rownames_to_column()%>% pivot_longer(-rowname), aes(x=rowname, value, fill=name)) +
+    geom_bar(stat="identity", width=1) + theme(legend.background = element_rect(color = NA, fill = NA))+ 
+    scale_fill_manual(name="",values=c(col.a,col.g,col.l,col.p),labels=c("absent","gains","losses","retained"))
+ leg1<-cowplot::get_plot_component(e1, "guide-box", return_all = TRUE)
+ p_gainloss<- p_gainloss + annotation_custom(grob = leg1[[1]][[1]], xmin =  0, xmax = 0.5, ymin = 1, ymax = 5) 
+ 
+
+#tidy up table of node states
+#finalord<-c(23,43,28,29,27,30,31,37,32,33,34,35,36,26,38,25,24,42,39,40,41)
+#initalord<-23:43
+#matchord<-match(finalord,initalord)
+nice<-gainloss.dollo.mat.nodes
+colnames(nice)<-c("OGs_present","OGs_absent","Gains","Losses","Absent","Retained")
+nice2<-nice %>% tibble::rownames_to_column("Node") %>% bind_rows(summarise(., across(where(is.numeric), sum), across(!where(is.numeric), ~"Totals")))
+
+cp1<-cowplot::plot_grid(p_abspres,p_gainloss,nrow=1,ncol=2, labels=c("A","B"))
+#cowplot::ggdraw(cp1)
+plot_save<-cowplot::ggdraw(cowplot::add_sub(cp1,paste0("OrthoFinder OG dynamics under Dollo parsimony under hypothesis:",HYPOTHESISNAME,"\n Porportion of all OGs inferred as present at each ancestor under Dollo (A); ancestral OGs were further compared to immediate ancestral nodes to determine \nthe proportion of the  ",ncol(ogdf), " orthogroups which constitue gains, losses, ancestral retention and ancestral absence (B)."),x=.01,hjust=0,size=12))
+return(list(plot_save,nice2))
+}
+```
+
+```{r plot_results}
+h0<-plot_Dollo_results(TREE=tr0, DOLLO.RESULTS="dolloASR_results_H0.Rds", LOSS.GAIN.PRES.ABS="loss_gain_pres_abs_H0.Rds", HYPOTHESISNAME=treelist["tr0"], NODENAMES=nodenames0)
+h1<-plot_Dollo_results(TREE=tr1, DOLLO.RESULTS="dolloASR_results_H1.Rds", LOSS.GAIN.PRES.ABS="loss_gain_pres_abs_H1.Rds", HYPOTHESISNAME=treelist["tr01"], NODENAMES=nodenames1)
+h2<-plot_Dollo_results(TREE=tr2, DOLLO.RESULTS="dolloASR_results_H2.Rds", LOSS.GAIN.PRES.ABS="loss_gain_pres_abs_H2.Rds", HYPOTHESISNAME=treelist["tr02"], NODENAMES=nodenames2)
+h3<-plot_Dollo_results(TREE=tr3, DOLLO.RESULTS="dolloASR_results_H3.Rds", LOSS.GAIN.PRES.ABS="loss_gain_pres_abs_H3.Rds", HYPOTHESISNAME=treelist["tr03"], NODENAMES=nodenames3)
+h4<-plot_Dollo_results(TREE=tr4, DOLLO.RESULTS="dolloASR_results_H4.Rds", LOSS.GAIN.PRES.ABS="loss_gain_pres_abs_H4.Rds", HYPOTHESISNAME=treelist["tr04"], NODENAMES=nodenames4)
+h5<-plot_Dollo_results(TREE=tr5, DOLLO.RESULTS="dolloASR_results_H5.Rds", LOSS.GAIN.PRES.ABS="loss_gain_pres_abs_H5.Rds", HYPOTHESISNAME=treelist["tr05"], NODENAMES=nodenames5)
+h6<-plot_Dollo_results(TREE=tr6, DOLLO.RESULTS="dolloASR_results_H6.Rds", LOSS.GAIN.PRES.ABS="loss_gain_pres_abs_H6.Rds", HYPOTHESISNAME=treelist["tr06"], NODENAMES=nodenames6)
+h7<-plot_Dollo_results(TREE=tr7, DOLLO.RESULTS="dolloASR_results_H7.Rds", LOSS.GAIN.PRES.ABS="loss_gain_pres_abs_H7.Rds", HYPOTHESISNAME=treelist["tr07"], NODENAMES=nodenames7)
+h8<-plot_Dollo_results(TREE=tr8, DOLLO.RESULTS="dolloASR_results_H8.Rds", LOSS.GAIN.PRES.ABS="loss_gain_pres_abs_H8.Rds", HYPOTHESISNAME=treelist["tr08"], NODENAMES=nodenames8)
+h9<-plot_Dollo_results(TREE=tr9, DOLLO.RESULTS="dolloASR_results_H9.Rds", LOSS.GAIN.PRES.ABS="loss_gain_pres_abs_H9.Rds", HYPOTHESISNAME=treelist["tr09"], NODENAMES=nodenames9)
+h10<-plot_Dollo_results(TREE=tr10, DOLLO.RESULTS="dolloASR_results_H10.Rds", LOSS.GAIN.PRES.ABS="loss_gain_pres_abs_H10.Rds", HYPOTHESISNAME=treelist["tr10"], NODENAMES=nodenames10)
+
+```
+### OrthoFinder OG dynamics under Dollo parsimony
+
+```{r pdfplot, eval=F}
+pdf("Dollo_trees_allOG_twomore.pdf",width=12, height=10, useDingbats = F)
+cowplot::ggdraw(h0[[1]])
+cowplot::ggdraw(h1[[1]])
+cowplot::ggdraw(h2[[1]])
+cowplot::ggdraw(h3[[1]])
+cowplot::ggdraw(h4[[1]])
+cowplot::ggdraw(h5[[1]])
+cowplot::ggdraw(h6[[1]])
+cowplot::ggdraw(h7[[1]])
+cowplot::ggdraw(h8[[1]])
+cowplot::ggdraw(h9[[1]])
+cowplot::ggdraw(h10[[1]])
+dev.off()
+#pdf("Dollo_trees_twomore.pdf",width=12, height=10, useDingbats = F)
+#cowplot::ggdraw(h9[[1]])
+#cowplot::ggdraw(h10[[1]])
+#dev.off()
+#save tables
+library(writexl)
+ list_of_dfs <- list(h0[[2]],h1[[2]],h2[[2]],h3[[2]],h4[[2]],h5[[2]],h6[[2]],h7[[2]],h8[[2]],h9[[2]],h10[[2]])
+ names(list_of_dfs)<-gsub("Constraint_","",treelist)[order(names(treelist))]
+ write_xlsx(list_of_dfs, "Aranchnid_Dollo_results.05.22.xlsx")
+#
+ #list_of_dfs <- list(h9[[2]],h10[[2]])
+# names(list_of_dfs)<-gsub("Constraint_","",treelist)[order(names(treelist))][10:11]
+# write_xlsx(list_of_dfs, "Aranchnid_Dollo_results.05.22.xlsx")
+```
+
+
+#### Fisher's exact test
+Are significantly more losses required under either topology?
+```{r ttests,include=T}
+mat<-matrix(c(tail(h0[[2]]$Retained,1),tail(h1[[2]]$Retained,1),tail(h0[[2]]$Losses,1),tail(h1[[2]]$Losses,1)),2,2)
+pval<-fisher.test(mat)$p
+oddsr<-fisher.test(mat)$estimate
+#tail(nice1$Losses,1)/tail(nice1$Retained,1)
+#tail(nice2$Losses,1)/tail(nice2$Retained,1)
+#tail(nice2$Losses,1)/tail(nice1$Losses,1)
+dimnames(mat)<-list(c(treelist["tr0"],treelist["tr01"]),c("retained","lost"))
+knitr::kable(mat)
+perc_inc<-100*(tail(h0[[2]]$Losses,1)-tail(h1[[2]]$Losses,1))/tail(h0[[2]]$Losses,1)
+
+
+xtab<-as.table(rbind(
+  c(tail(h0[[2]]$Retained,1),tail(h1[[2]]$Retained,1),tail(h2[[2]]$Retained,1),tail(h3[[2]]$Retained,1),tail(h4[[2]]$Retained,1),tail(h5[[2]]$Retained,1),tail(h6[[2]]$Retained,1),tail(h7[[2]]$Retained,1),tail(h8[[2]]$Retained,1),tail(h9[[2]]$Retained,1),tail(h10[[2]]$Retained,1)),
+  c(tail(h0[[2]]$Losses,1),tail(h1[[2]]$Losses,1),tail(h2[[2]]$Losses,1),tail(h3[[2]]$Losses,1),tail(h4[[2]]$Losses,1),tail(h5[[2]]$Losses,1),tail(h6[[2]]$Losses,1),tail(h7[[2]]$Losses,1),tail(h8[[2]]$Losses,1),tail(h9[[2]]$Losses,1),tail(h10[[2]]$Losses,1))))
+dimnames(xtab)<-list(event=c("Retained","Lost"),hypothesis=treelist[c("tr0","tr01","tr02","tr03","tr04","tr05","tr06","tr07","tr08","tr09","tr10")])
+fishertests<-rstatix::pairwise_fisher_test(xtab)
+knitr::kable(t(xtab))
+
+#add fisher results to spreadsheets
+library(writexl)
+ list_of_dfs <- list(h0[[2]],h1[[2]],h2[[2]],h3[[2]],h4[[2]],h5[[2]],h6[[2]],h7[[2]],h8[[2]],h9[[2]],h10[[2]],fishertests)
+ names(list_of_dfs)<-c(gsub("Constraint_","",treelist)[order(names(treelist))],"Fishers_pairwise")
+ write_xlsx(list_of_dfs, "Aranchnid_Dollo_results.05.22.xlsx")
+
+```
+Fisher's exact test finds a significant difference in the odds ratio, p=`r pval`, with ~`r perc_inc`% more orthogroup losses required across the `r `treelist["tr0"]` tree than in the `r treelist["tr01"]` tree.
+
+
+#### Repeat analysis using only Orthogroups shared between at least two species 
+No single-species orthogroups
+````{r tree_bars}
+tree<-tr0
+nodenames<-nodenames0
+
+#plot species-unique OG as bars
+g<-ggtree(tree,right=T,branch.length="none") +geom_tiplab(aes(fontface=3),size=1.5) + geom_label2(label=nodenames, aes(subset= !isTip),hjust=1.2,size = 2) + hexpand(0.5) + hexpand(0.25, -1)+ theme(legend.position = "none")
+shared<-ogdf2 %>% tibble::rownames_to_column("tip") %>% pivot_longer(-tip,names_to="OG",values_to="count") %>% group_by(tip) %>% summarize(shared_across=sum(count))
+singles<-ogdf_single %>% tibble::rownames_to_column("tip") %>% pivot_longer(-tip,names_to="OG",values_to="count") %>% group_by(tip) %>% summarize(single_species=sum(count))
+tots<-left_join(shared,singles) %>% pivot_longer(-tip,names_to = "totaltype", values_to = "value")
+
+p1 <- ggplot(tots,aes(x=tip,fill=totaltype,y=value))  + geom_bar(stat="identity")+ labs(x="OrthoGroups detected by species",fill="Number of Orthogroups") + 
+    #geom_text(aes(label=total, y= total+100),hjust=0) +
+    coord_flip() + theme_tree2() 
+library(aplot)
+tree_single_bars<-p1 %>% insert_left(g, width=2) 
+#plotted with shared-only dollo trees below
+
+```
+
+
+```{r dollo_plot_function2}
+# plot_Dollo_results()
+# TREE<-tr0
+# DOLLO.RESULTS<-"dolloASR_results_H0.Rds"
+# LOSS.GAIN.PRES.ABS<-"loss_gain_pres_abs_H0.Rds"
+# HYPOTHESISNAME<-treelist["tr0"]
+# NODENAMES<-nodenames0
+plot_Dollo_results2<-function(TREE,DOLLO.RESULTS,LOSS.GAIN.PRES.ABS,HYPOTHESISNAME,NODENAMES){
+#3 visualize results for H1
+load(DOLLO.RESULTS)
+tree<-TREE
+nodenames<-NODENAMES
+
+dollo.anc.states_shared<- dollo.anc.states %>% dplyr::select(colnames(ogdf2))
+pres.og<-rowSums(dollo.anc.states_shared)
+abs.og<-(ncol(dollo.anc.states_shared)-pres.og)
+dollo.mat<-cbind(abs.og,pres.og)
+
+#infer gains and losses from presence/absence
+load(LOSS.GAIN.PRES.ABS)
+lossgain.table_single<-lossgain.table %>%  dplyr::select(colnames(ogdf_single))
+lossgain.table_shared<-lossgain.table %>%  dplyr::select(colnames(ogdf2))
+
+gainloss.dollo.mat<-t(apply(lossgain.table_shared,MARGIN=1, function(x) table(factor(x, levels=c("a","g","l","p"))))) %>% data.frame()
+rownames(gainloss.dollo.mat)<-c(tree$tip.label,nodenames)
+
+# a=absent & not present in ancestor
+# p=inherited from ancestor (previous node)
+# g=gain compared to previous node
+# l=lost from previous node
+
+# gainloss.dollo.mat is ordered tips, then nodes
+# each rows reflect outcomes (ie what happened btween ancestor and tip is shown on tip's row), 
+# so no gains or losses can be inferred at root
+gainloss.dollo.mat.nodes<-gainloss.dollo.mat[nodenames,]
+#root is in table, but no gain/loss shown as would require comparison with earlier node
+
+dm<-dollo.mat %>% as.data.frame %>% tibble::rownames_to_column()
+gl<-gainloss.dollo.mat.nodes %>% as.data.frame %>% tibble::rownames_to_column()
+combined<-left_join(dm,gl) %>% dplyr::select(pres.og,abs.og,g,l,a,p)
+rownames(combined)<-rownames(dollo.mat)
+gainloss.dollo.mat.nodes<-combined
+
+
+ p<-ggtree(tree,right=T,branch.length="none") +geom_tiplab(aes(fontface=3),size=1.5) + geom_label2(label=nodenames, aes(subset= !isTip),hjust=1.2,size = 1.5) + hexpand(0.2)+hexpand(-1)
+  pies <- nodepie(gainloss.dollo.mat.nodes %>%  mutate(node=Ntip(tr1)+1:Nnode(tr1)),cols=1:2)
+  pies1 <- lapply(pies, function(g) g+scale_fill_manual(values = c(absent.col, present.col)))
+  p_abspres<-p + ggpp::geom_plot(data=td_filter(!isTip), mapping=aes(x=x,y=y, label=pies1), vp.width=0.035, vp.height=0.035, hjust=0.5, vjust=0.5) 
+ #setup dummy plot to borrow legend for pie chart colors
+  e1 <- ggplot(gainloss.dollo.mat.nodes %>%  dplyr::select(pres.og,abs.og) %>%
+    tibble::rownames_to_column()%>% pivot_longer(-rowname), aes(x=rowname, value, fill=name)) +
+    geom_bar(stat="identity", width=1) + theme(legend.background = element_rect(color = NA, fill = NA))+
+    scale_fill_manual(name="",values=c(absent.col,present.col),labels=c("absent","present"))
+ leg1<-cowplot::get_plot_component(e1, "guide-box", return_all = TRUE)
+ p_abspres<-p_abspres + annotation_custom(grob = leg1[[1]][[1]], xmin = -0, xmax = 0.5, ymin = 10, ymax = 15) 
+
+ 
+ p<-ggtree(tree,right=T,branch.length="none") +geom_tiplab(aes(fontface=3),size=1.5) + geom_label2(label=nodenames, aes(subset= !isTip),hjust=1.2,size = 1.5)+ hexpand(0.2) +hexpand(-1)
+  pies <- nodepie(gainloss.dollo.mat.nodes %>%  mutate(node=Ntip(tr1)+1:Nnode(tr1)),cols=3:6)
+  pies2 <- lapply(pies, function(g) g+scale_fill_manual(values = c(col.a,col.g,col.l,col.p)))
+  p_gainloss<-p + ggpp::geom_plot(data=td_filter(!isTip), mapping=aes(x=x,y=y, label=pies2), vp.width=0.035, vp.height=0.035, hjust=0.5, vjust=0.5) 
+ #setup dummy plot to borrow legend for pie chart colors
+  e1 <- ggplot(gainloss.dollo.mat.nodes %>%  dplyr::select(a,g,l,p) %>%
+    tibble::rownames_to_column()%>% pivot_longer(-rowname), aes(x=rowname, value, fill=name)) +
+    geom_bar(stat="identity", width=1) + theme(legend.background = element_rect(color = NA, fill = NA))+ 
+    scale_fill_manual(name="",values=c(col.a,col.g,col.l,col.p),labels=c("absent","gains","losses","retained"))
+ leg1<-cowplot::get_plot_component(e1, "guide-box", return_all = TRUE)
+ p_gainloss<- p_gainloss + annotation_custom(grob = leg1[[1]][[1]], xmin =  0, xmax = 0.5, ymin = 10, ymax = 15) 
+ 
+
+#tidy up table of node states
+#finalord<-c(23,43,28,29,27,30,31,37,32,33,34,35,36,26,38,25,24,42,39,40,41)
+#initalord<-23:43
+#matchord<-match(finalord,initalord)
+#nice<-gainloss.dollo.mat.nodes[matchord,]
+nice<-gainloss.dollo.mat.nodes
+colnames(nice)<-c("OGs_present","OGs_absent","Gains","Losses","Absent","Retained")
+nice1<-nice %>% tibble::rownames_to_column("Node") %>% bind_rows(summarise(., across(where(is.numeric), sum), across(!where(is.numeric), ~"Totals")))
+
+cp1<-cowplot::plot_grid(p_abspres,p_gainloss,nrow=1,ncol=2, labels=c("A","B"))
+#cowplot::ggdraw(cp1)
+plot_save<-cowplot::ggdraw(cowplot::add_sub(cp1,paste0("OrthoFinder OG dynamics under Dollo parsimony under hypothesis: ",HYPOTHESISNAME,"\n Proportion of all ",ncol(ogdf2), " OGs (shared between at least 2 species) inferred as present at each ancestor under Dollo are shown (A);  ancestral OGs were \nfurther compared to immediate ancestral nodes to determine the proportion of the  ",ncol(ogdf2), " shared orthogroups which constitue gains, losses, \nancestral retention and ancestral absence (B)."),x=.01,hjust=0,size=12))
+return(list(plot_save,nice1))
+}
+
+```
+
+
+```{r plot_results_shared}
+h0<-plot_Dollo_results2(TREE=tr0, DOLLO.RESULTS="dolloASR_results_H0.Rds", LOSS.GAIN.PRES.ABS="loss_gain_pres_abs_H0.Rds", HYPOTHESISNAME=treelist["tr0"], NODENAMES=nodenames0)
+h1<-plot_Dollo_results2(TREE=tr1, DOLLO.RESULTS="dolloASR_results_H1.Rds", LOSS.GAIN.PRES.ABS="loss_gain_pres_abs_H1.Rds", HYPOTHESISNAME=treelist["tr01"], NODENAMES=nodenames1)
+h2<-plot_Dollo_results2(TREE=tr2, DOLLO.RESULTS="dolloASR_results_H2.Rds", LOSS.GAIN.PRES.ABS="loss_gain_pres_abs_H2.Rds", HYPOTHESISNAME=treelist["tr02"], NODENAMES=nodenames2)
+h3<-plot_Dollo_results2(TREE=tr3, DOLLO.RESULTS="dolloASR_results_H3.Rds", LOSS.GAIN.PRES.ABS="loss_gain_pres_abs_H3.Rds", HYPOTHESISNAME=treelist["tr03"], NODENAMES=nodenames3)
+h4<-plot_Dollo_results2(TREE=tr4, DOLLO.RESULTS="dolloASR_results_H4.Rds", LOSS.GAIN.PRES.ABS="loss_gain_pres_abs_H4.Rds", HYPOTHESISNAME=treelist["tr04"], NODENAMES=nodenames4)
+h5<-plot_Dollo_results2(TREE=tr5, DOLLO.RESULTS="dolloASR_results_H5.Rds", LOSS.GAIN.PRES.ABS="loss_gain_pres_abs_H5.Rds", HYPOTHESISNAME=treelist["tr05"], NODENAMES=nodenames5)
+h6<-plot_Dollo_results2(TREE=tr6, DOLLO.RESULTS="dolloASR_results_H6.Rds", LOSS.GAIN.PRES.ABS="loss_gain_pres_abs_H6.Rds", HYPOTHESISNAME=treelist["tr06"], NODENAMES=nodenames6)
+h7<-plot_Dollo_results2(TREE=tr7, DOLLO.RESULTS="dolloASR_results_H7.Rds", LOSS.GAIN.PRES.ABS="loss_gain_pres_abs_H7.Rds", HYPOTHESISNAME=treelist["tr07"], NODENAMES=nodenames7)
+h8<-plot_Dollo_results2(TREE=tr8, DOLLO.RESULTS="dolloASR_results_H8.Rds", LOSS.GAIN.PRES.ABS="loss_gain_pres_abs_H8.Rds", HYPOTHESISNAME=treelist["tr08"], NODENAMES=nodenames8)
+h9<-plot_Dollo_results2(TREE=tr9, DOLLO.RESULTS="dolloASR_results_H9.Rds", LOSS.GAIN.PRES.ABS="loss_gain_pres_abs_H9.Rds", HYPOTHESISNAME=treelist["tr09"], NODENAMES=nodenames9)
+h10<-plot_Dollo_results2(TREE=tr10, DOLLO.RESULTS="dolloASR_results_H10.Rds", LOSS.GAIN.PRES.ABS="loss_gain_pres_abs_H10.Rds", HYPOTHESISNAME=treelist["tr10"], NODENAMES=nodenames10)
+
+```
+### OrthoFinder OG dynamics under Dollo parsimony
+
+```{r pdfplot_shared, eval=F}
+pdf("Dollo_trees_sharedOG.pdf",width=12, height=10, useDingbats = F)
+
+cowplot::ggdraw(cowplot::add_sub(ggplotify::as.grob(tree_single_bars),label="Arachnida constraint tree with total orthogroups mapped.  Orthogroups shared by more than one species (red) are distinguished from orthogroups \ndetected in a single taxon (blue). Note: Unassigned OGs (single sequences) have not been included.",x=0.1,hjust=0,size=8))
+
+cowplot::ggdraw(h0[[1]])
+cowplot::ggdraw(h1[[1]])
+cowplot::ggdraw(h2[[1]])
+cowplot::ggdraw(h3[[1]])
+cowplot::ggdraw(h4[[1]])
+cowplot::ggdraw(h5[[1]])
+cowplot::ggdraw(h6[[1]])
+cowplot::ggdraw(h7[[1]])
+cowplot::ggdraw(h8[[1]])
+cowplot::ggdraw(h9[[1]])
+cowplot::ggdraw(h10[[1]])
+dev.off()
+
+#save tables
+library(writexl)
+ list_of_dfs <- list(h0[[2]],h1[[2]],h2[[2]],h3[[2]],h4[[2]],h5[[2]],h6[[2]],h7[[2]],h8[[2]],h9[[2]],h10[[2]])
+ names(list_of_dfs)<-gsub("Constraint_","",treelist)[order(names(treelist))]
+ write_xlsx(list_of_dfs, "Aranchnid_Dollo_results_sharedOG.5.22.xlsx")
+
+```
+
+```{r troubleshoot}
+DOLLO.RESULTS<-"dolloASR_results_H0.Rds"
+LOSS.GAIN.PRES.ABS<-"loss_gain_pres_abs_H0.Rds"
+HYPOTHESISNAME<-treelist["tr0"]
+NODENAMES<-nodenames0
+TREE<-tr0
+load(DOLLO.RESULTS)
+tree<-TREE
+nodenames<-NODENAMES
+pres.og<-rowSums(dollo.anc.states)
+abs.og<-(ncol(dollo.anc.states)-pres.og)
+dollo.mat.all<-cbind(abs.og,pres.og)
+
+dollo.anc.states_shared<- dollo.anc.states %>% dplyr::select(colnames(ogdf2))
+pres.og<-rowSums(dollo.anc.states_shared)
+abs.og<-(ncol(dollo.anc.states_shared)-pres.og)
+dollo.mat.shared<-cbind(abs.og,pres.og)
+
+#infer gains and losses from presence/absence
+load(LOSS.GAIN.PRES.ABS)
+lossgain.table_single<-lossgain.table %>%  dplyr::select(colnames(ogdf_single))
+lossgain.table_shared<-lossgain.table %>%  dplyr::select(colnames(ogdf2))
+
+```
+
+
+#### Fisher's exact test
+Are significantly more losses required under either topology?
+```{r ttests,include=T}
+mat<-matrix(c(tail(nice1$Retained,1),tail(nice2$Retained,1),tail(nice1$Losses,1),tail(nice2$Losses,1)),2,2)
+pval<-fisher.test(mat)$p
+oddsr<-fisher.test(mat)$estimate
+#tail(nice1$Losses,1)/tail(nice1$Retained,1)
+#tail(nice2$Losses,1)/tail(nice2$Retained,1)
+#tail(nice2$Losses,1)/tail(nice1$Losses,1)
+dimnames(mat)<-list(c("constraint","nonconstraint"),c("retained","lost"))
+knitr::kable(mat)
+perc_inc<-100*(tail(nice1$Losses,1)-tail(nice2$Losses,1))/tail(nice1$Losses,1)
+
+
+xtab<-as.table(rbind(c(tail(h0[[2]]$Retained,1),tail(h1[[2]]$Retained,1),tail(h2[[2]]$Retained,1),tail(h3[[2]]$Retained,1),tail(h4[[2]]$Retained,1),tail(h5[[2]]$Retained,1),tail(h6[[2]]$Retained,1),tail(h7[[2]]$Retained,1),tail(h8[[2]]$Retained,1),tail(h9[[2]]$Retained,1),tail(h10[[2]]$Retained,1)),c(tail(h0[[2]]$Losses,1),tail(h1[[2]]$Losses,1),tail(h2[[2]]$Losses,1),tail(h3[[2]]$Losses,1),tail(h4[[2]]$Losses,1),tail(h5[[2]]$Losses,1),tail(h6[[2]]$Losses,1),tail(h7[[2]]$Losses,1),tail(h8[[2]]$Losses,1),tail(h9[[2]]$Losses,1),tail(h10[[2]]$Losses,1))))
+dimnames(xtab)<-list(event=c("Retained","Lost"),hypothesis=treelist[c("tr0","tr01","tr02","tr03","tr04","tr05","tr06","tr07","tr08","tr09","tr10")])
+fishertests<-rstatix::pairwise_fisher_test(xtab)
+knitr::kable(t(xtab))
+group1_lost_to_retained<-group2_lost_to_retained<-xtab["Lost",]/xtab["Retained",]
+
+str(group1_lost_to_retained)
+fishertests<-fishertests %>% left_join(., data.frame(group1_lost_to_retained, group1 = names(group1_lost_to_retained)))  %>% left_join(., data.frame(group2_lost_to_retained, group2 = names(group2_lost_to_retained))) %>% mutate(diff=group1_lost_to_retained-group2_lost_to_retained) 
+#to get symmetric matrix
+fishertests[c("group1", "group2")] <- lapply(fishertests[c("group1", "group2")], factor, levels=unique(unlist(fishertests[c("group1", "group2")]))) 
+
+xtabs(diff ~ group1 + group2, data=fishertests)
+fishertests2<-fishertests %>% mutate(diff_signif=paste0(signif(diff,4),p.adj.signif)) %>% mutate(diff_signif2=if_else(p.adj.signif=="ns",NA,signif(diff,4)))
+
+dm<-xtabs(diff ~ group1 + group2, data=fishertests)
+dm + t(dm) 
+dm2<-xtabs(diff_signif2 ~ group1 + group2, data=fishertests2,na.action = na.pass)
+signif_dm<-dm2 + t(dm2)
+signif_dm<-as.data.frame.matrix(signif_dm)
+signif_dm<-cbind(names(signif_dm),signif_dm);names(signif_dm)[1]<-"topology"
+#add fisher results to spreadsheets
+library(writexl)
+ list_of_dfs <- list(h0[[2]],h1[[2]],h2[[2]],h3[[2]],h4[[2]],h5[[2]],h6[[2]],h7[[2]],h8[[2]],h9[[2]],h10[[2]],fishertests,signif_dm)
+ names(list_of_dfs)<-c(gsub("Constraint_","",treelist)[order(names(treelist))],"Fishers_results","Fishers_pairwise")
+ write_xlsx(list_of_dfs, "Aranchnid_Dollo_results_sharedOG.05.27.xlsx")
+
+```
+Fisher's exact test finds a significant difference in the odds ratio, p=`r pval`, with ~`r perc_inc`% more orthogroup losses required across the constraint tree than in the non-constraint tree.
+
+
+#### Orthogroups shared among tips
+```{r upgma}
+
+dm <- dist(ogdf2)
+upgmatree <- upgma(dm)  %>% reroot(., node.number=getMRCA(.,tip=c("Epiperipatus_transcriptome","Opisthopatus_transcriptome")),position=0.1)%>% ladderize()
+plot(upgmatree)
+plot(tr1)
+# limit to chelicerata 
+keep<-tr1$tip.label[unlist(Descendants(tr1,node=getMRCA(.,tip=c("Argiope_genome","Pycnogonum_genome")),type="tips"))]
+ogdf_chel<-ogdf2[rownames(ogdf2) %in% keep,]
+dm <- dist(ogdf_chel)
+upgmatree <- upgma(dm)  %>% reroot(., node.number=getMRCA(.,tip=c("Pycnogonum_genome","Anoplo_transcriptome")),position=0.1)%>% ladderize()
+plot(upgmatree)
+
+#plot UPGMa tree and heatmap of distances
+  dist_df <- as.data.frame(as.matrix(dm))
+ longdf<-dist_df %>% tibble::rownames_to_column("label")  %>% pivot_longer(!label,names_to="comparison",values_to="distance")
+longdf$label<-factor(longdf$label,levels=upgmatree$tip.label)
+longdf$comparison<-factor(longdf$comparison,levels=upgmatree$tip.label)
+
+ggplot(longdf, aes(x = label, y = comparison, fill = distance)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "red") + # Customize colors as needed
+  labs(title = "Heatmap of Distances from hclust", x = "Sample", y = "Sample") +
+  theme_minimal() + # Minimal theme for a clean look
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) # Rotate x-axis labels if necessary
+
+ogdfPA<-ogdf2 %>%  mutate(across(where(is.numeric), ~ ifelse(. > 0, 1, .)))
+write.table(ogdfPA,file="Orthogroups_shared.Incidence.tsv")
+#make heatmap of co-occurences, use order from UPGMA 
+dm <- dist(ogdfPA)
+upgmatree <- upgma(dm)  %>% reroot(., node.number=getMRCA(.,tip=c("Epiperipatus_transcriptome","Opisthopatus_transcriptome")),position=0.1)%>% ladderize()
+plot(upgmatree)
+hclust<-hclust(dm)
+
+
+dat<- ogdf2 %>%  tibble::rownames_to_column("label")  %>% pivot_longer(!label,names_to="OG",values_to="present") %>% filter(present>0) %>%data.frame()
+#out <- crossprod(table(long_ogdf2[1:2]))
+library("Matrix")
+
+# factors for indexing matrix entries and naming dimensions
+trx.fac <- factor(dat[,2])
+itm.fac <- factor(dat[,1])
+
+s <- sparseMatrix(
+        as.numeric(trx.fac), 
+        as.numeric(itm.fac),
+        dimnames = list(
+                as.character(levels(trx.fac)), 
+                as.character(levels(itm.fac))),
+        x = 1)
+
+# calculating co-occurrences
+v <- t(s) %*% s
+dat2 <-
+  v %>% as.matrix() %>% as.data.frame() %>%
+  as_tibble() %>% mutate(rows=colnames(.)) %>%
+  pivot_longer(-rows, names_to = "columns", values_to = "value") 
+dat2$rows<-factor(dat2$rows,levels=upgmatree$tip.label)
+dat2$columns<-factor(dat2$columns,levels=upgmatree$tip.label)
+
+
+ggplot(dat2, aes(rows, columns)) +
+  geom_tile(aes(fill = value)) +
+  geom_text(aes(label = round(value, 1)),size=1) +
+  scale_fill_gradient(low = "white", high = "red") +
+   theme(axis.text.x = element_text(angle = 45, hjust = 1,size=4))
+cooccurmat<-v %>% as.matrix() %>% as.data.frame() 
+rownames(cooccurmat)<-colnames(cooccurmat)
+cooccurmat<-cooccurmat[hclust$labels[rev(hclust$order)],hclust$labels[rev(hclust$order)]]
+write.csv(cooccurmat,file="cooccuringOGmatrix.5.27.csv")
+
+#devtools::install_github("nicolash2/ggdendroplot")
+library(ggdendroplot)
+dm <- hmReady( as.matrix(cooccurmat), colclus=hclust, rowclus=hclust ) #we use our column clustering for both row and col clustering
+
+hclust_plot<-ggplot() + 
+  geom_tile(data=dm, aes(x=x, y=y, fill=value)) +                      #heatmap
+  scale_fill_gradient(low = "white", high = "red") +          #options for heatmap
+  geom_dendro(hclust, ylim=c(95, 100)) +                             #upper dendrogram
+  geom_dendro(hclust, xlim=c(95,100), pointing="side") +             #side dendrogram
+  theme_hm()+                                                          #design
+  theme(axis.title=element_blank(),axis.text.x = element_text(angle = 45, hjust = 1,size=4),axis.text.y = element_text(size=4))   
+
+
+pdf("OG_co_occurence_clustered.pdf",width=12, height=10, useDingbats = F)
+cowplot::ggdraw(cowplot::add_sub(hclust_plot,paste0("Hierarchical clustering of species based on presence/absence of ",ncol(ogdf2)," shared OGs."),x=0.1,hjust=0,size=8))
+dev.off()
+
+
+
+#consolidate to 12 clades
+cladedf<-read.csv("../july_run/clades.csv",header=T)
+ogdf_clade<-ogdf2 %>% tibble::rownames_to_column("tip") %>%left_join(.,cladedf[,1:2]) %>% group_by(Clade) %>% summarize(across(where(is.numeric),sum))
+ogdfPA_clade<-ogdf_clade %>%  mutate(across(where(is.numeric), ~ ifelse(. > 0, 1, .)))
+write.table(ogdfPA_clade,file="Orthogroups_clade.Incidence.tsv")
+#make heatmap of co-occurences, use order from UPGMA 
+dm <- ogdfPA_clade %>% data.frame(.,row.names=ogdfPA_clade$Clade) %>% dplyr::select(!Clade) %>% dist()
+hclust<-hclust(dm,method="average")
+
+
+dat<- ogdf_clade  %>% pivot_longer(!Clade,names_to="OG",values_to="present") %>% filter(present>0) %>%data.frame()
+#out <- crossprod(table(long_ogdf2[1:2]))
+library("Matrix")
+
+# factors for indexing matrix entries and naming dimensions
+trx.fac <- factor(dat[,2])
+itm.fac <- factor(dat[,1])
+
+s <- sparseMatrix(
+        as.numeric(trx.fac), 
+        as.numeric(itm.fac),
+        dimnames = list(
+                as.character(levels(trx.fac)), 
+                as.character(levels(itm.fac))),
+        x = 1)
+
+# calculating co-occurrences
+v <- t(s) %*% s
+dat2 <-
+  v %>% as.matrix() %>% as.data.frame() %>%
+  as_tibble() %>% mutate(rows=colnames(.)) %>%
+  pivot_longer(-rows, names_to = "columns", values_to = "value") 
+
+cooccurmat<-v %>% as.matrix() %>% as.data.frame() 
+rownames(cooccurmat)<-colnames(cooccurmat)
+cooccurmat<-cooccurmat[hclust$labels[rev(hclust$order)],hclust$labels[rev(hclust$order)]]
+write.csv(cooccurmat,file="cooccuringOGmatrix_clades.csv")
+
+#devtools::install_github("nicolash2/ggdendroplot")
+library(ggdendroplot)
+dm <- hmReady( as.matrix(cooccurmat), colclus=hclust, rowclus=hclust ) #we use our column clustering for both row and col clustering
+
+hclust_plot<-ggplot() + 
+  geom_tile(data=dm, aes(x=x, y=y, fill=value)) +                      #heatmap
+  geom_text(data=dm,aes(x=x, y=y,label = value),size=3) +
+  scale_fill_gradient(low = "white", high = "red") +          #options for heatmap
+  geom_dendro(hclust, ylim=c(15, 17)) +                             #upper dendrogram
+ geom_dendro(hclust, xlim=c(15,17), pointing="side") +             #side dendrogram
+  theme_hm()+                                                          #design
+  theme(axis.title=element_blank(),axis.text.x = element_text(angle = 45, hjust = 1,size=8),axis.text.y = element_text(size=8))   
+
+
+pdf("OG_co_occurence_clades.pdf",width=12, height=10, useDingbats = F)
+cowplot::ggdraw(cowplot::add_sub(hclust_plot,paste0("UPGMA clustering of clades based on presence/absence of ",ncol(ogdf2)," shared OGs. Values represent number of OGs present in both clades."),x=0.1,hjust=0,size=8))
+dev.off()
+```
+```{r,eval=FALSE}
+#plotting tree and OG table (example)
+ p<-ggtree(tr1,right=T) #+geom_tiplab()+ hexpand(.01)
+ 
+  # p2
+  longdf<-ogdf_chel  %>% tibble::rownames_to_column("label")  %>% 
+    filter(label %in% tr1$tip.label) %>% pivot_longer(!label,names_to="OG",values_to="value")
+  longdf2<-left_join(longdf,joined2 %>% filter(homo_symbol %in% sym_list[[x]]) %>% distinct(.,OG,.keep_all=T))
+  
+  my_breaks<-c(1,round(max(longdf2$value)/100),plyr::round_any(max(longdf2$value)/50,10),plyr::round_any(max(longdf2$value)/10,10),plyr::round_any(max(longdf2$value)/3,10),plyr::round_any(max(longdf2$value),10))
+  longdf2$value[longdf2$value==0]<-NA #can specify NA color
+  #set gene axis order by OG ( corresponds with overall abundance)
+  p2 <- ggplot(longdf2, aes(x=reorder(homo_symbol,desc(OG)*-1), y=label)) + 
+    geom_tile(aes(fill=value)) + 
+    scale_fill_continuous(name = "count", trans = "log10", breaks = my_breaks, na.value = col.a, labels = c(my_breaks[1:6]),type="viridis") + 
+    
+     theme_minimal() + xlab(NULL) + ylab(NULL) +
+    theme(axis.text=element_text(size=5),
+    axis.text.x = element_text(angle = 90, hjust = 0, vjust = 0.5)) +
+    scale_x_discrete(position = "top")
+  p2 %>% insert_left(p1,width=0.5)
+ 
+
+```
